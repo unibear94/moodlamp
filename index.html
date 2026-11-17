@@ -1,0 +1,831 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#15131b">
+<title>무드등 리모컨</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #15131b;
+    --card: #1f1c27;
+    --card-2: #282432;
+    --line: #36313f;
+    --text: #f5f0e8;
+    --muted: #a8a196;
+    --accent: #ffb54d;
+    --accent-ink: #2a1a00;
+    --good: #6fd39a;
+    --bad: #ff7a6b;
+    --radius: 18px;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--text); }
+  body {
+    font-family: 'Be Vietnam Pro', 'Noto Sans KR', system-ui, sans-serif;
+    font-size: 16px; line-height: 1.45;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .wrap { max-width: 520px; margin: 0 auto; padding: 16px 16px 48px; }
+  header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
+  h1 { font-size: 21px; margin: 0; font-weight: 700; letter-spacing: -0.01em; }
+  .sub { color: var(--muted); font-size: 13px; margin-top: 2px; }
+  .langs { display: flex; background: var(--card); border: 1px solid var(--line); border-radius: 999px; padding: 3px; flex-shrink: 0; }
+  .langs button { border: 0; background: none; color: var(--muted); font: inherit; font-size: 13px; font-weight: 600; padding: 6px 10px; border-radius: 999px; cursor: pointer; }
+  .langs button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
+
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px; margin-bottom: 12px; }
+  .card h2 { font-size: 14px; font-weight: 600; color: var(--muted); margin: 0 0 12px; letter-spacing: 0.01em; }
+
+  .notice { border-radius: 14px; padding: 12px 14px; font-size: 14px; margin-bottom: 12px; background: #3a2a1a; border: 1px solid #6b4a22; color: #ffe2b8; display: none; }
+  .notice.show { display: block; }
+
+  .conn { display: flex; align-items: center; gap: 12px; }
+  .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--bad); flex-shrink: 0; box-shadow: 0 0 0 4px rgba(255,122,107,0.15); }
+  .dot.on { background: var(--good); box-shadow: 0 0 0 4px rgba(111,211,154,0.15); }
+  .conn-text { flex: 1; min-width: 0; }
+  .conn-state { font-weight: 600; }
+  .conn-hint { color: var(--muted); font-size: 12.5px; }
+
+  .btn { border: 1px solid var(--line); background: var(--card-2); color: var(--text); font: inherit; font-weight: 600; font-size: 15px; padding: 10px 14px; border-radius: 12px; cursor: pointer; }
+  .btn:active { transform: scale(0.98); }
+  .btn.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+  .btn.small { font-size: 13px; padding: 7px 11px; }
+
+  .lamp { display: grid; place-items: center; padding: 6px 0 2px; }
+  .ring-box { position: relative; width: 236px; height: 236px; }
+  .ring-box svg { width: 100%; height: 100%; overflow: visible; }
+  .power {
+    position: absolute; inset: 0; margin: auto; width: 104px; height: 104px; border-radius: 50%;
+    border: 1px solid var(--line); background: var(--card-2); color: var(--text); font: inherit; cursor: pointer;
+    display: grid; place-items: center; text-align: center;
+  }
+  .power[aria-pressed="true"] { background: #2f2a1f; border-color: #5c4a2a; }
+  .power svg { width: 30px; height: 30px; display: block; margin: 0 auto 4px; }
+  .power span { font-size: 13px; font-weight: 600; }
+
+  .voice { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+  .mic {
+    width: 100%; border: 0; border-radius: 16px; padding: 16px; font: inherit; font-size: 17px; font-weight: 700; cursor: pointer;
+    background: var(--accent); color: var(--accent-ink); display: flex; align-items: center; justify-content: center; gap: 10px;
+  }
+  .mic svg { width: 22px; height: 22px; }
+  .mic.listening { background: #ff8f6b; animation: pulse 1.2s ease-in-out infinite; }
+  .mic:disabled { background: var(--card-2); color: var(--muted); cursor: not-allowed; }
+  @keyframes pulse { 0%,100% { box-shadow: 0 0 0 0 rgba(255,143,107,0.45); } 50% { box-shadow: 0 0 0 10px rgba(255,143,107,0); } }
+  .heard { width: 100%; font-size: 14px; display: grid; grid-template-columns: auto 1fr; gap: 4px 10px; }
+  .heard dt { color: var(--muted); }
+  .heard dd { margin: 0; font-weight: 500; word-break: break-word; }
+  .tries { width: 100%; display: flex; flex-wrap: wrap; gap: 6px; }
+  .tries .label { color: var(--muted); font-size: 12.5px; width: 100%; }
+  .chip { font-size: 13px; padding: 5px 10px; border-radius: 999px; background: var(--card-2); border: 1px solid var(--line); color: var(--text); }
+
+  .swatches { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+  .swatch { border: 2px solid transparent; border-radius: 14px; height: 52px; cursor: pointer; position: relative; font: inherit; font-size: 12px; font-weight: 600; color: rgba(0,0,0,0.65); display: flex; align-items: flex-end; justify-content: center; padding: 0 4px 6px; text-align: center; line-height: 1.15; }
+  .swatch[aria-pressed="true"] { border-color: var(--text); }
+  .custom { display: flex; align-items: center; justify-content: center; gap: 6px; background: var(--card-2); border: 1px dashed var(--line); color: var(--text); }
+  .custom input { position: absolute; inset: 0; opacity: 0; width: 100%; height: 100%; cursor: pointer; }
+
+  .bright { display: flex; align-items: center; gap: 12px; }
+  .bright output { min-width: 44px; text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; }
+  input[type=range] { flex: 1; accent-color: var(--accent); height: 28px; }
+
+  .modes { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+  .modes button { border: 1px solid var(--line); background: var(--card-2); color: var(--text); font: inherit; font-size: 13px; font-weight: 600; border-radius: 12px; padding: 12px 4px; cursor: pointer; }
+  .modes button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+
+  details.card { padding: 0; }
+  details.card > summary { list-style: none; cursor: pointer; padding: 16px; font-weight: 600; display: flex; justify-content: space-between; align-items: center; }
+  details.card > summary::-webkit-details-marker { display: none; }
+  details.card > summary::after { content: '+'; color: var(--muted); font-size: 20px; line-height: 1; }
+  details.card[open] > summary::after { content: '–'; }
+  .det-body { padding: 0 16px 16px; }
+  .help { color: var(--muted); font-size: 13px; margin: 0 0 12px; }
+
+  .cmd { border-top: 1px solid var(--line); padding: 12px 0; }
+  .cmd:first-child { border-top: 0; padding-top: 0; }
+  .cmd-head { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+  .cmd-name { font-weight: 600; }
+  .cmd-code { font-family: ui-monospace, Menlo, monospace; font-size: 12px; color: var(--muted); background: var(--card-2); padding: 2px 6px; border-radius: 6px; }
+  .cmd-color { width: 32px; height: 26px; border: 1px solid var(--line); border-radius: 6px; padding: 0; background: none; margin-left: auto; }
+  .kw { display: grid; grid-template-columns: 30px 1fr; gap: 6px 8px; align-items: center; }
+  .kw label { font-size: 12px; color: var(--muted); font-weight: 600; }
+  .kw input { width: 100%; background: var(--bg); border: 1px solid var(--line); color: var(--text); font: inherit; font-size: 14px; padding: 7px 9px; border-radius: 8px; }
+  .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .saved-msg { color: var(--good); font-size: 13px; }
+
+  .manual { display: flex; gap: 8px; margin-bottom: 10px; }
+  .manual input { flex: 1; min-width: 0; background: var(--bg); border: 1px solid var(--line); color: var(--text); font: inherit; font-family: ui-monospace, Menlo, monospace; font-size: 14px; padding: 9px 10px; border-radius: 10px; }
+  .log { list-style: none; margin: 0; padding: 0; font-family: ui-monospace, Menlo, monospace; font-size: 12.5px; max-height: 220px; overflow: auto; }
+  .log li { padding: 3px 0; border-bottom: 1px dashed var(--line); color: var(--muted); word-break: break-all; }
+  .log li.out { color: var(--accent); }
+  .log li.in { color: var(--good); }
+  .log li.err { color: var(--bad); }
+
+  .toast { position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%) translateY(20px); opacity: 0; background: #2f2a38; border: 1px solid var(--line); color: var(--text); padding: 10px 14px; border-radius: 12px; font-size: 14px; transition: all .25s; pointer-events: none; max-width: 90vw; text-align: center; }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  footer { color: var(--muted); font-size: 12px; text-align: center; margin-top: 18px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1 data-i18n="title">무드등 리모컨</h1>
+      <div class="sub" data-i18n="subtitle">말로 켜는 무드등</div>
+    </div>
+    <div class="langs" role="group" aria-label="Language">
+      <button type="button" data-lang="ko" aria-pressed="true">한</button>
+      <button type="button" data-lang="en" aria-pressed="false">EN</button>
+      <button type="button" data-lang="vi" aria-pressed="false">VI</button>
+    </div>
+  </header>
+
+  <div class="notice" id="notice"></div>
+
+  <section class="card">
+    <div class="conn">
+      <span class="dot" id="connDot"></span>
+      <div class="conn-text">
+        <div class="conn-state" id="connState">연결 안 됨</div>
+        <div class="conn-hint" id="connHint"></div>
+      </div>
+      <button type="button" class="btn primary" id="connectBtn">무드등 연결</button>
+    </div>
+  </section>
+
+  <section class="card lamp">
+    <div class="ring-box">
+      <svg viewBox="0 0 200 200" id="ring" aria-hidden="true"></svg>
+      <button type="button" class="power" id="powerBtn" aria-pressed="false">
+        <div>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 3v8"/><path d="M6.3 6.8a8 8 0 1 0 11.4 0"/></svg>
+          <span id="powerLabel">꺼짐</span>
+        </div>
+      </button>
+    </div>
+  </section>
+
+  <section class="card voice">
+    <button type="button" class="mic" id="micBtn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0"/><path d="M12 18v3"/></svg>
+      <span id="micLabel">눌러서 말하기</span>
+    </button>
+    <dl class="heard">
+      <dt data-i18n="heard">들은 말</dt><dd id="heardText">–</dd>
+      <dt data-i18n="sent">보낸 명령</dt><dd id="sentText">–</dd>
+    </dl>
+    <div class="tries" id="tries"></div>
+  </section>
+
+  <section class="card">
+    <h2 data-i18n="color">색</h2>
+    <div class="swatches" id="swatches"></div>
+  </section>
+
+  <section class="card">
+    <h2 data-i18n="brightness">밝기</h2>
+    <div class="bright">
+      <input type="range" id="bright" min="0" max="150" value="120" aria-label="brightness">
+      <output id="brightOut">80%</output>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2 data-i18n="mode">조명 모드</h2>
+    <div class="modes" id="modes"></div>
+  </section>
+
+  <details class="card" id="settings">
+    <summary data-i18n="settings">음성 명령 수정</summary>
+    <div class="det-body">
+      <p class="help" data-i18n="settingsHelp"></p>
+      <div id="cmdList"></div>
+      <div class="row" style="margin-top:12px">
+        <button type="button" class="btn primary small" id="saveBtn" data-i18n="save">저장</button>
+        <button type="button" class="btn small" id="resetBtn" data-i18n="reset">기본값으로</button>
+        <span class="saved-msg" id="savedMsg"></span>
+      </div>
+    </div>
+  </details>
+
+  <details class="card">
+    <summary data-i18n="log">통신 기록</summary>
+    <div class="det-body">
+      <form class="manual" id="manualForm">
+        <input id="manualInput" placeholder="COL:255,0,0" autocomplete="off" autocapitalize="characters" spellcheck="false" aria-label="command">
+        <button type="submit" class="btn small" data-i18n="send">보내기</button>
+      </form>
+      <ol class="log" id="log"></ol>
+    </div>
+  </details>
+
+  <footer>Arduino Uno · HC-06 · NeoPixel 8</footer>
+</div>
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+(() => {
+  'use strict';
+
+  // ---------- 문구 (3개 언어) ----------
+  const T = {
+    ko: {
+      title: '무드등 리모컨', subtitle: '말로 켜는 무드등',
+      connect: '무드등 연결', disconnect: '연결 끊기', connected: '연결됨', disconnected: '연결 안 됨', connecting: '연결 중…',
+      pairFirst: '먼저 휴대폰 블루투스 설정에서 HC-06과 페어링하세요 (비밀번호 1234).',
+      on: '켜짐', off: '꺼짐',
+      talk: '눌러서 말하기', listening: '듣는 중…', heard: '들은 말', sent: '보낸 명령',
+      noMatch: '알아듣지 못했어요. 다시 말해 주세요.', trySay: '이렇게 말해 보세요',
+      color: '색', custom: '직접', brightness: '밝기', mode: '조명 모드',
+      settings: '음성 명령 수정',
+      settingsHelp: '각 명령에 반응할 말을 쉼표(,)로 구분해 적으세요. 고른 언어와 상관없이 세 언어를 모두 찾아요. 색 명령은 오른쪽 칸에서 색도 바꿀 수 있어요.',
+      save: '저장', reset: '기본값으로', saved: '저장했어요', resetDone: '기본값으로 되돌렸어요', storeFail: '이 브라우저에서는 저장이 안 돼요. 새로고침하면 사라져요.',
+      log: '통신 기록', send: '보내기',
+      noSerial: '이 브라우저는 블루투스 연결을 지원하지 않아요. 안드로이드 크롬(138 이상)이나 컴퓨터용 크롬에서 열어 주세요.',
+      noSpeech: '이 브라우저는 음성 인식을 지원하지 않아요. 크롬에서 열어 주세요.',
+      blocked: '이 화면에서는 블루투스나 마이크를 쓸 수 없어요. 웹사이트 주소(https://…)로 직접 열어 주세요.',
+      micDenied: '마이크 권한을 허용해 주세요.', speechErr: '음성 인식 오류', connFail: '연결하지 못했어요',
+      preview: '연결 전이라 화면에만 표시돼요',
+      tries: ['불 켜줘', '파란색으로 바꿔줘', '촛불 모드', '더 밝게', '불 꺼줘'],
+      modes: ['무지개', '숨쉬기', '촛불', '단색'],
+      names: { on: '켜기', off: '끄기', brighter: '밝게', darker: '어둡게', red: '빨강', orange: '주황', yellow: '노랑', green: '초록', blue: '파랑', purple: '보라', white: '흰색', rainbow: '무지개 모드', breathing: '숨쉬기 모드', candle: '촛불 모드', solid: '단색 모드' }
+    },
+    en: {
+      title: 'Mood Lamp Remote', subtitle: 'A lamp you control by voice',
+      connect: 'Connect lamp', disconnect: 'Disconnect', connected: 'Connected', disconnected: 'Not connected', connecting: 'Connecting…',
+      pairFirst: 'First pair the HC-06 in your phone’s Bluetooth settings (PIN 1234).',
+      on: 'On', off: 'Off',
+      talk: 'Tap and speak', listening: 'Listening…', heard: 'Heard', sent: 'Sent',
+      noMatch: 'Sorry, I didn’t catch that. Please try again.', trySay: 'Try saying',
+      color: 'Color', custom: 'Pick', brightness: 'Brightness', mode: 'Light mode',
+      settings: 'Edit voice commands',
+      settingsHelp: 'List the words for each command, separated by commas. All three languages are checked, whichever one is selected. For color commands, the box on the right changes the color too.',
+      save: 'Save', reset: 'Reset to defaults', saved: 'Saved', resetDone: 'Defaults restored', storeFail: 'This browser can’t save settings. They will be lost on reload.',
+      log: 'Log', send: 'Send',
+      noSerial: 'This browser can’t connect over Bluetooth. Use Chrome on Android (138 or later) or Chrome on a computer.',
+      noSpeech: 'This browser doesn’t support speech recognition. Please use Chrome.',
+      blocked: 'Bluetooth and the microphone are blocked here. Open the website address (https://…) directly.',
+      micDenied: 'Please allow microphone access.', speechErr: 'Speech recognition error', connFail: 'Could not connect',
+      preview: 'Not connected — only the preview changes',
+      tries: ['Turn on the light', 'Make it blue', 'Candle mode', 'Brighter', 'Turn off'],
+      modes: ['Rainbow', 'Breathing', 'Candle', 'Solid'],
+      names: { on: 'Turn on', off: 'Turn off', brighter: 'Brighter', darker: 'Darker', red: 'Red', orange: 'Orange', yellow: 'Yellow', green: 'Green', blue: 'Blue', purple: 'Purple', white: 'White', rainbow: 'Rainbow mode', breathing: 'Breathing mode', candle: 'Candle mode', solid: 'Solid mode' }
+    },
+    vi: {
+      title: 'Điều khiển đèn ngủ', subtitle: 'Đèn điều khiển bằng giọng nói',
+      connect: 'Kết nối đèn', disconnect: 'Ngắt kết nối', connected: 'Đã kết nối', disconnected: 'Chưa kết nối', connecting: 'Đang kết nối…',
+      pairFirst: 'Trước tiên hãy ghép đôi HC-06 trong cài đặt Bluetooth của điện thoại (mã PIN 1234).',
+      on: 'Bật', off: 'Tắt',
+      talk: 'Nhấn để nói', listening: 'Đang nghe…', heard: 'Đã nghe', sent: 'Đã gửi',
+      noMatch: 'Tôi chưa hiểu. Vui lòng nói lại.', trySay: 'Hãy thử nói',
+      color: 'Màu', custom: 'Chọn', brightness: 'Độ sáng', mode: 'Chế độ đèn',
+      settings: 'Sửa lệnh giọng nói',
+      settingsHelp: 'Ghi các từ cho mỗi lệnh, ngăn cách bằng dấu phẩy (,). Cả ba ngôn ngữ đều được kiểm tra, dù bạn chọn ngôn ngữ nào. Với lệnh màu, ô bên phải dùng để đổi màu.',
+      save: 'Lưu', reset: 'Khôi phục mặc định', saved: 'Đã lưu', resetDone: 'Đã khôi phục mặc định', storeFail: 'Trình duyệt này không lưu được cài đặt. Tải lại trang sẽ mất.',
+      log: 'Nhật ký', send: 'Gửi',
+      noSerial: 'Trình duyệt này không hỗ trợ kết nối Bluetooth. Hãy dùng Chrome trên Android (bản 138 trở lên) hoặc Chrome trên máy tính.',
+      noSpeech: 'Trình duyệt này không hỗ trợ nhận dạng giọng nói. Hãy dùng Chrome.',
+      blocked: 'Không thể dùng Bluetooth hoặc micro ở đây. Hãy mở trực tiếp địa chỉ trang web (https://…).',
+      micDenied: 'Vui lòng cho phép truy cập micro.', speechErr: 'Lỗi nhận dạng giọng nói', connFail: 'Không kết nối được',
+      preview: 'Chưa kết nối — chỉ bản xem trước thay đổi',
+      tries: ['Bật đèn', 'Đổi sang màu xanh dương', 'Chế độ nến', 'Sáng hơn', 'Tắt đèn'],
+      modes: ['Cầu vồng', 'Nhịp thở', 'Nến', 'Một màu'],
+      names: { on: 'Bật', off: 'Tắt', brighter: 'Sáng hơn', darker: 'Tối hơn', red: 'Đỏ', orange: 'Cam', yellow: 'Vàng', green: 'Xanh lá', blue: 'Xanh dương', purple: 'Tím', white: 'Trắng', rainbow: 'Chế độ cầu vồng', breathing: 'Chế độ nhịp thở', candle: 'Chế độ nến', solid: 'Chế độ một màu' }
+    }
+  };
+  const SPEECH_LANG = { ko: 'ko-KR', en: 'en-US', vi: 'vi-VN' };
+
+  // ---------- 음성 명령 기본값 (설정에서 수정 가능) ----------
+  const DEFAULT_COMMANDS = [
+    { id: 'on',        send: 'ON',     kw: { ko: ['켜'], en: ['turn on', 'lights on', 'switch on'], vi: ['bật'] } },
+    { id: 'off',       send: 'OFF',    kw: { ko: ['꺼', '끄'], en: ['turn off', 'lights off', 'switch off'], vi: ['tắt'] } },
+    { id: 'brighter',  send: 'BRI+',   kw: { ko: ['밝게'], en: ['brighter', 'brighten'], vi: ['sáng hơn', 'sáng lên'] } },
+    { id: 'darker',    send: 'BRI-',   kw: { ko: ['어둡게'], en: ['darker', 'dimmer', 'dim'], vi: ['tối hơn', 'tối lại', 'giảm sáng'] } },
+    { id: 'red',    rgb: [255, 0, 0],     kw: { ko: ['빨간', '빨강'], en: ['red'], vi: ['đỏ'] } },
+    { id: 'orange', rgb: [255, 100, 0],   kw: { ko: ['주황'], en: ['orange'], vi: ['cam'] } },
+    { id: 'yellow', rgb: [255, 200, 0],   kw: { ko: ['노란', '노랑'], en: ['yellow'], vi: ['vàng'] } },
+    { id: 'green',  rgb: [0, 255, 0],     kw: { ko: ['초록', '녹색'], en: ['green'], vi: ['xanh lá'] } },
+    { id: 'blue',   rgb: [0, 0, 255],     kw: { ko: ['파란', '파랑'], en: ['blue'], vi: ['xanh dương', 'xanh nước biển'] } },
+    { id: 'purple', rgb: [150, 0, 255],   kw: { ko: ['보라'], en: ['purple', 'violet'], vi: ['tím'] } },
+    { id: 'white',  rgb: [255, 255, 255], kw: { ko: ['흰', '하얀', '하얗'], en: ['white'], vi: ['trắng'] } },
+    { id: 'rainbow',   send: 'MODE:0', kw: { ko: ['무지개'], en: ['rainbow'], vi: ['cầu vồng'] } },
+    { id: 'breathing', send: 'MODE:1', kw: { ko: ['숨쉬기', '숨 쉬기'], en: ['breathing', 'breathe'], vi: ['nhịp thở', 'hơi thở'] } },
+    { id: 'candle',    send: 'MODE:2', kw: { ko: ['촛불'], en: ['candle'], vi: ['nến'] } },
+    { id: 'solid',     send: 'MODE:3', kw: { ko: ['단색'], en: ['solid'], vi: ['một màu'] } }
+  ];
+  const GROUP = { on: 'power', off: 'power', brighter: 'bright', darker: 'bright', rainbow: 'mode', breathing: 'mode', candle: 'mode', solid: 'mode' };
+  const groupOf = c => c.rgb ? 'color' : GROUP[c.id];
+  const codeOf = c => c.rgb ? `COL:${c.rgb.join(',')}` : c.send;
+  const STORE_KEY = 'moodlamp.commands.v1';
+  const LANG_KEY = 'moodlamp.lang';
+
+  const clone = o => JSON.parse(JSON.stringify(o));
+  const store = {
+    get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
+    set(k, v) { try { localStorage.setItem(k, v); return true; } catch (e) { return false; } },
+    del(k) { try { localStorage.removeItem(k); } catch (e) {} }
+  };
+
+  function loadCommands() {
+    const raw = store.get(STORE_KEY);
+    if (!raw) return clone(DEFAULT_COMMANDS);
+    try {
+      const saved = JSON.parse(raw);
+      return DEFAULT_COMMANDS.map(def => {
+        const s = saved.find(x => x.id === def.id);
+        if (!s) return clone(def);
+        const c = clone(def);
+        ['ko', 'en', 'vi'].forEach(l => { if (Array.isArray(s.kw && s.kw[l])) c.kw[l] = s.kw[l].map(String); });
+        if (c.rgb && Array.isArray(s.rgb) && s.rgb.length === 3) c.rgb = s.rgb.map(n => Math.max(0, Math.min(255, n | 0)));
+        return c;
+      });
+    } catch (e) { return clone(DEFAULT_COMMANDS); }
+  }
+
+  // ---------- 말 → 명령 찾기 ----------
+  const norm = s => String(s).normalize('NFC').toLowerCase().replace(/\s+/g, ' ').trim();
+  const isLetter = ch => !!ch && /[\p{L}\p{N}]/u.test(ch);
+
+  // 키워드가 문장 어디에 있는지 (없으면 -1). 한국어는 붙여 쓰므로 부분 일치,
+  // 영어·베트남어는 단어 단위로만 인정 ("reduce" 안의 "red"는 무시).
+  function findKeyword(text, kw, lang) {
+    const k = norm(kw);
+    if (!k) return -1;
+    let from = 0;
+    while (true) {
+      const i = text.indexOf(k, from);
+      if (i < 0) return -1;
+      if (lang === 'ko') return i;
+      if (!isLetter(text[i - 1]) && !isLetter(text[i + k.length])) return i;
+      from = i + 1;
+    }
+  }
+
+  function matchCommands(sentence, commands) {
+    const text = norm(sentence);
+    const hits = [];
+    for (const c of commands) {
+      let best = -1;
+      for (const lang of ['ko', 'en', 'vi']) {
+        for (const kw of c.kw[lang] || []) {
+          const i = findKeyword(text, kw, lang);
+          if (i >= 0 && (best < 0 || i < best)) best = i;
+        }
+      }
+      if (best >= 0) hits.push({ c, pos: best });
+    }
+    if (hits.some(h => h.c.id === 'off')) return ['OFF'];
+    hits.sort((a, b) => a.pos - b.pos);
+    const out = [];
+    const used = new Set();
+    for (const h of hits) {
+      const g = groupOf(h.c);
+      if (used.has(g)) continue;   // 색·모드·밝기는 하나만 (먼저 말한 것)
+      used.add(g);
+      out.push(codeOf(h.c));
+    }
+    // 켜기가 있으면 맨 앞으로
+    out.sort((a, b) => (a === 'ON' ? -1 : 0) - (b === 'ON' ? -1 : 0));
+    return out;
+  }
+
+  // ---------- 상태 ----------
+  let lang = ['ko', 'en', 'vi'].includes(store.get(LANG_KEY)) ? store.get(LANG_KEY) : 'ko';
+  let commands = loadCommands();
+  const MAX_BRI = 150;  // 아두이노 코드의 BRIGHT_LIMIT와 같게
+  const lamp = { on: false, mode: 3, bri: 120, rgb: [255, 160, 60] };
+  let shownBri = 0;
+  let port = null, writer = null, reader = null, readDone = null, connecting = false;
+  const encoder = new TextEncoder();
+  const $ = id => document.getElementById(id);
+  const t = k => T[lang][k];
+
+  // 아두이노와 같은 규칙으로 화면 상태를 바꿈
+  function applyLocal(cmd) {
+    const c = cmd.toUpperCase();
+    if (c === 'ON') lamp.on = true;
+    else if (c === 'OFF') lamp.on = false;
+    else if (c === 'TOGGLE') lamp.on = !lamp.on;
+    else if (/^MODE:[0-3]$/.test(c)) { lamp.mode = +c.slice(5); lamp.on = true; }
+    else if (/^COL:\d+,\d+,\d+$/.test(c)) { lamp.rgb = c.slice(4).split(',').map(n => Math.min(255, +n)); lamp.mode = 3; lamp.on = true; }
+    else if (c === 'BRI+') lamp.bri = Math.min(MAX_BRI, lamp.bri + 30);
+    else if (c === 'BRI-') lamp.bri = Math.max(10, lamp.bri - 30);
+    else if (/^BRI:\d+$/.test(c)) lamp.bri = Math.min(MAX_BRI, +c.slice(4));
+    renderControls();
+  }
+
+  // ---------- 통신 기록 ----------
+  function log(text, cls) {
+    const li = document.createElement('li');
+    li.textContent = text;
+    if (cls) li.className = cls;
+    const ol = $('log');
+    ol.prepend(li);
+    while (ol.children.length > 60) ol.lastChild.remove();
+  }
+
+  let toastTimer;
+  function toast(msg) {
+    const el = $('toast');
+    el.textContent = msg;
+    el.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => el.classList.remove('show'), 2600);
+  }
+
+  function notice(msg) {
+    const el = $('notice');
+    el.textContent = msg || '';
+    el.classList.toggle('show', !!msg);
+  }
+
+  // ---------- 블루투스 (Web Serial) ----------
+  const SPP_UUID = '00001101-0000-1000-8000-00805f9b34fb';
+  let previewWarned = false;
+
+  async function send(cmds) {
+    if (!Array.isArray(cmds)) cmds = [cmds];
+    for (const cmd of cmds) {
+      applyLocal(cmd);
+      if (writer) {
+        try {
+          await writer.write(encoder.encode(cmd + '\n'));
+          log('→ ' + cmd, 'out');
+        } catch (e) {
+          log('× ' + cmd + ' (' + e.message + ')', 'err');
+        }
+        await new Promise(r => setTimeout(r, 40));
+      } else {
+        log('· ' + cmd);
+        if (!previewWarned) { toast(t('preview')); previewWarned = true; }
+      }
+    }
+  }
+
+  async function connect() {
+    if (port) return disconnect();
+    if (!('serial' in navigator)) { notice(t('noSerial')); return; }
+    connecting = true; renderConn();
+    try {
+      port = await navigator.serial.requestPort({ allowedBluetoothServiceClassIds: [SPP_UUID] });
+      await port.open({ baudRate: 9600 });
+      writer = port.writable.getWriter();
+      readLoop();
+      connecting = false; renderConn();
+      log('— ' + t('connected'));
+      setTimeout(() => { if (writer) writer.write(encoder.encode('STATUS\n')).catch(() => {}); }, 600);
+    } catch (e) {
+      connecting = false;
+      if (port) { try { await port.close(); } catch (_) {} }
+      port = null; writer = null;
+      renderConn();
+      if (e.name === 'NotFoundError') return;          // 목록에서 취소
+      if (e.name === 'SecurityError') notice(t('blocked'));
+      else toast(t('connFail') + ': ' + e.message);
+      log('× ' + e.name + ': ' + e.message, 'err');
+    }
+  }
+
+  async function readLoop() {
+    const decoder = new TextDecoderStream();
+    readDone = port.readable.pipeTo(decoder.writable).catch(() => {});
+    reader = decoder.readable.getReader();
+    let buf = '';
+    try {
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buf += value;
+        let i;
+        while ((i = buf.search(/[\r\n]/)) >= 0) {
+          const line = buf.slice(0, i).trim();
+          buf = buf.slice(i + 1);
+          if (line) onLine(line);
+        }
+      }
+    } catch (e) { /* 연결 끊김 */ }
+    finally { if (port) cleanup(); }
+  }
+
+  function onLine(line) {
+    log('← ' + line, line === 'ERR' ? 'err' : 'in');
+    const m = line.match(/^(ON|OFF),MODE:(\d),BRI:(\d+)(?:,COL:(\d+),(\d+),(\d+))?/);
+    if (m) {
+      lamp.on = m[1] === 'ON';
+      lamp.mode = +m[2];
+      lamp.bri = +m[3];
+      if (m[4] !== undefined) lamp.rgb = [+m[4], +m[5], +m[6]];
+      renderControls();
+    }
+  }
+
+  async function disconnect() {
+    const p = port;
+    port = null;
+    try { if (reader) await reader.cancel(); } catch (e) {}
+    try { if (readDone) await readDone; } catch (e) {}
+    try { if (writer) { writer.releaseLock(); } } catch (e) {}
+    try { if (p) await p.close(); } catch (e) {}
+    reader = null; writer = null; readDone = null;
+    renderConn();
+    log('— ' + t('disconnected'));
+  }
+
+  function cleanup() {
+    port = null; writer = null; reader = null;
+    renderConn();
+    log('— ' + t('disconnected'));
+  }
+
+  if ('serial' in navigator) {
+    navigator.serial.addEventListener('disconnect', e => { if (port && e.target === port) disconnect(); });
+  }
+
+  // ---------- 음성 인식 ----------
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  let rec = null, listening = false;
+
+  function listen() {
+    if (!SR) { notice(t('noSpeech')); return; }
+    if (listening) { rec && rec.stop(); return; }
+    rec = new SR();
+    rec.lang = SPEECH_LANG[lang];
+    rec.interimResults = false;
+    rec.maxAlternatives = 3;
+    rec.continuous = false;
+    rec.onstart = () => { listening = true; renderMic(); };
+    rec.onend = () => { listening = false; renderMic(); };
+    rec.onerror = e => {
+      listening = false; renderMic();
+      if (e.error === 'not-allowed' || e.error === 'service-not-allowed') notice(t('micDenied') + ' ' + t('blocked'));
+      else if (e.error !== 'no-speech' && e.error !== 'aborted') toast(t('speechErr') + ': ' + e.error);
+    };
+    rec.onresult = e => {
+      const alts = Array.from(e.results[0] || []);
+      let heard = alts[0] ? alts[0].transcript : '';
+      let found = [];
+      for (const a of alts) {
+        const r = matchCommands(a.transcript, commands);
+        if (r.length) { found = r; heard = a.transcript; break; }
+      }
+      $('heardText').textContent = heard || '–';
+      log('말: ' + heard);
+      if (found.length) {
+        $('sentText').textContent = found.join('  ');
+        send(found);
+      } else {
+        $('sentText').textContent = '–';
+        toast(t('noMatch'));
+      }
+    };
+    try { rec.start(); } catch (e) { toast(t('speechErr') + ': ' + e.message); }
+  }
+
+  // ---------- 화면 그리기 ----------
+  function renderConn() {
+    const on = !!port && !connecting;
+    $('connDot').classList.toggle('on', on);
+    $('connState').textContent = connecting ? t('connecting') : on ? t('connected') : t('disconnected');
+    $('connHint').textContent = on ? '' : t('pairFirst');
+    const b = $('connectBtn');
+    b.textContent = on ? t('disconnect') : t('connect');
+    b.classList.toggle('primary', !on);
+    b.disabled = connecting;
+  }
+
+  function renderMic() {
+    const b = $('micBtn');
+    b.classList.toggle('listening', listening);
+    $('micLabel').textContent = listening ? t('listening') : t('talk');
+    b.disabled = !SR;
+  }
+
+  const hex = rgb => '#' + rgb.map(n => n.toString(16).padStart(2, '0')).join('');
+  const fromHex = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16));
+
+  function renderSwatches() {
+    const box = $('swatches');
+    box.innerHTML = '';
+    commands.filter(c => c.rgb).forEach(c => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'swatch';
+      b.style.background = hex(c.rgb);
+      const lum = 0.299 * c.rgb[0] + 0.587 * c.rgb[1] + 0.114 * c.rgb[2];
+      b.style.color = lum > 140 ? 'rgba(0,0,0,0.7)' : 'rgba(255,255,255,0.92)';
+      b.textContent = t('names')[c.id];
+      b.dataset.rgb = c.rgb.join(',');
+      b.addEventListener('click', () => send('COL:' + c.rgb.join(',')));
+      box.appendChild(b);
+    });
+    const lab = document.createElement('label');
+    lab.className = 'swatch custom';
+    lab.innerHTML = '<span></span><input type="color" aria-label="custom color">';
+    lab.querySelector('span').textContent = t('custom');
+    const inp = lab.querySelector('input');
+    inp.value = hex(lamp.rgb);
+    inp.addEventListener('change', () => send('COL:' + fromHex(inp.value).join(',')));
+    box.appendChild(lab);
+  }
+
+  function renderModes() {
+    const box = $('modes');
+    box.innerHTML = '';
+    t('modes').forEach((name, i) => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.textContent = name;
+      b.dataset.mode = i;
+      b.addEventListener('click', () => send('MODE:' + i));
+      box.appendChild(b);
+    });
+  }
+
+  function renderControls() {
+    $('powerBtn').setAttribute('aria-pressed', lamp.on);
+    $('powerLabel').textContent = lamp.on ? t('on') : t('off');
+    document.querySelectorAll('#modes button').forEach(b => b.setAttribute('aria-pressed', lamp.on && +b.dataset.mode === lamp.mode));
+    const cur = lamp.rgb.join(',');
+    document.querySelectorAll('#swatches .swatch[data-rgb]').forEach(b => b.setAttribute('aria-pressed', lamp.on && lamp.mode === 3 && b.dataset.rgb === cur));
+    if (document.activeElement !== $('bright')) $('bright').value = lamp.bri;
+    $('brightOut').textContent = Math.round(lamp.bri / MAX_BRI * 100) + '%';
+  }
+
+  function renderTries() {
+    const box = $('tries');
+    box.innerHTML = '';
+    const l = document.createElement('div');
+    l.className = 'label';
+    l.textContent = t('trySay');
+    box.appendChild(l);
+    t('tries').forEach(s => {
+      const c = document.createElement('span');
+      c.className = 'chip';
+      c.textContent = '“' + s + '”';
+      box.appendChild(c);
+    });
+  }
+
+  function renderSettings() {
+    const box = $('cmdList');
+    box.innerHTML = '';
+    commands.forEach(c => {
+      const row = document.createElement('div');
+      row.className = 'cmd';
+      row.dataset.id = c.id;
+      const head = document.createElement('div');
+      head.className = 'cmd-head';
+      const name = document.createElement('span');
+      name.className = 'cmd-name';
+      name.textContent = t('names')[c.id];
+      const code = document.createElement('span');
+      code.className = 'cmd-code';
+      code.textContent = codeOf(c);
+      head.append(name, code);
+      if (c.rgb) {
+        const ci = document.createElement('input');
+        ci.type = 'color';
+        ci.className = 'cmd-color';
+        ci.value = hex(c.rgb);
+        ci.setAttribute('aria-label', t('names')[c.id]);
+        ci.addEventListener('input', () => { code.textContent = 'COL:' + fromHex(ci.value).join(','); });
+        head.appendChild(ci);
+      }
+      row.appendChild(head);
+      const kw = document.createElement('div');
+      kw.className = 'kw';
+      [['ko', '한'], ['en', 'EN'], ['vi', 'VI']].forEach(([l, label]) => {
+        const lab = document.createElement('label');
+        lab.textContent = label;
+        const inp = document.createElement('input');
+        inp.dataset.lang = l;
+        inp.value = (c.kw[l] || []).join(', ');
+        inp.lang = l;
+        const id = 'kw-' + c.id + '-' + l;
+        inp.id = id; lab.htmlFor = id;
+        kw.append(lab, inp);
+      });
+      row.appendChild(kw);
+      box.appendChild(row);
+    });
+  }
+
+  function saveSettings() {
+    document.querySelectorAll('#cmdList .cmd').forEach(row => {
+      const c = commands.find(x => x.id === row.dataset.id);
+      row.querySelectorAll('.kw input').forEach(inp => {
+        c.kw[inp.dataset.lang] = inp.value.split(/[,，、]/).map(s => s.trim()).filter(Boolean);
+      });
+      const ci = row.querySelector('.cmd-color');
+      if (ci && c.rgb) c.rgb = fromHex(ci.value);
+    });
+    const ok = store.set(STORE_KEY, JSON.stringify(commands.map(c => ({ id: c.id, kw: c.kw, rgb: c.rgb }))));
+    renderSwatches(); renderControls();
+    $('savedMsg').textContent = ok ? t('saved') : t('storeFail');
+    setTimeout(() => { $('savedMsg').textContent = ''; }, 2500);
+  }
+
+  function resetSettings() {
+    store.del(STORE_KEY);
+    commands = clone(DEFAULT_COMMANDS);
+    renderSettings(); renderSwatches(); renderControls();
+    $('savedMsg').textContent = t('resetDone');
+    setTimeout(() => { $('savedMsg').textContent = ''; }, 2500);
+  }
+
+  function setLang(l) {
+    lang = l;
+    store.set(LANG_KEY, l);
+    document.documentElement.lang = l;
+    document.title = t('title');
+    document.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = t(el.dataset.i18n); });
+    document.querySelectorAll('.langs button').forEach(b => b.setAttribute('aria-pressed', b.dataset.lang === l));
+    if (rec && listening) rec.abort();
+    renderConn(); renderMic(); renderSwatches(); renderModes(); renderTries(); renderSettings(); renderControls();
+    checkSupport();
+  }
+
+  function checkSupport() {
+    const msgs = [];
+    if (!('serial' in navigator)) msgs.push(t('noSerial'));
+    if (!SR) msgs.push(t('noSpeech'));
+    notice(msgs.join(' '));
+  }
+
+  // ---------- 링 미리보기 (아두이노와 같은 효과) ----------
+  const N = 8;
+  const ring = $('ring');
+  const dots = [];
+  const flicker = new Array(N).fill(0.85);
+  for (let i = 0; i < N; i++) {
+    const a = (i / N) * Math.PI * 2 - Math.PI / 2;
+    const c = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    c.setAttribute('cx', (100 + 86 * Math.cos(a)).toFixed(2));
+    c.setAttribute('cy', (100 + 86 * Math.sin(a)).toFixed(2));
+    c.setAttribute('r', 13);
+    ring.appendChild(c);
+    dots.push(c);
+  }
+
+  function hsv(h) { // h: 0~1, 채도·명도 최대
+    const i = Math.floor(h * 6), f = h * 6 - i, q = 1 - f;
+    return [[1, f, 0], [q, 1, 0], [0, 1, f], [0, q, 1], [f, 0, 1], [1, 0, q]][((i % 6) + 6) % 6].map(v => Math.round(v * 255));
+  }
+
+  function frame(now) {
+    const target = lamp.on ? lamp.bri : 0;
+    shownBri += (target - shownBri) * 0.08;
+    const k = shownBri / MAX_BRI;
+    for (let i = 0; i < N; i++) {
+      let rgb;
+      if (lamp.mode === 0) rgb = hsv(((now * 3) / 65536 + i / N) % 1);
+      else if (lamp.mode === 1) { const s = 0.3 + 0.7 * (Math.sin(now / 1000 * 1.5) + 1) / 2; rgb = [255 * s, 120 * s, 30 * s]; }
+      else if (lamp.mode === 2) { flicker[i] += ((0.55 + Math.random() * 0.45) - flicker[i]) * 0.25; const f = flicker[i]; rgb = [255 * f, 90 * f, 15 * f]; }
+      else rgb = lamp.rgb;
+      const d = dots[i];
+      if (k < 0.01) {
+        d.setAttribute('fill', '#2c2834');
+        d.style.filter = 'none';
+      } else {
+        const col = `rgb(${rgb.map(v => Math.round(v)).join(',')})`;
+        d.setAttribute('fill', col);
+        d.setAttribute('fill-opacity', (0.25 + 0.75 * k).toFixed(3));
+        d.style.filter = `drop-shadow(0 0 ${(4 + 10 * k).toFixed(1)}px ${col})`;
+      }
+    }
+    requestAnimationFrame(frame);
+  }
+
+  // ---------- 이벤트 연결 ----------
+  document.querySelectorAll('.langs button').forEach(b => b.addEventListener('click', () => setLang(b.dataset.lang)));
+  $('connectBtn').addEventListener('click', connect);
+  $('micBtn').addEventListener('click', listen);
+  $('powerBtn').addEventListener('click', () => send(lamp.on ? 'OFF' : 'ON'));
+  let briTimer = null, briLast = 0;
+  $('bright').addEventListener('input', e => {
+    const v = +e.target.value;
+    lamp.bri = v;
+    $('brightOut').textContent = Math.round(v / MAX_BRI * 100) + '%';
+    clearTimeout(briTimer);
+    const wait = Math.max(0, 150 - (Date.now() - briLast));
+    briTimer = setTimeout(() => { briLast = Date.now(); send('BRI:' + v); }, wait);
+  });
+  $('saveBtn').addEventListener('click', saveSettings);
+  $('resetBtn').addEventListener('click', resetSettings);
+  $('manualForm').addEventListener('submit', e => {
+    e.preventDefault();
+    const v = $('manualInput').value.trim().toUpperCase();
+    if (v) { send(v); $('manualInput').value = ''; }
+  });
+
+  window.__moodlamp = { matchCommands: s => matchCommands(s, commands), lamp };  // 시험용
+  setLang(lang);
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
